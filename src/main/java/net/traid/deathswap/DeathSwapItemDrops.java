@@ -58,17 +58,12 @@ public class DeathSwapItemDrops {
             Item randomItem = getRandomItem();
             ItemStack itemStack = new ItemStack(randomItem, 1);
 
-
-//            System.out.println("Actual given item: " + BuiltInRegistries.ITEM.getKey(randomItem));
-//            System.out.println("Display name: " + itemStack.getHoverName().getString());
-
+            player.sendSystemMessage(Component.literal("§aYou received: ").append(itemStack.getHoverName()));
 
             if (!player.getInventory().add(itemStack)) {
                 player.drop(itemStack, false);
             }
 
-
-//            player.sendSystemMessage(Component.literal("§aYou received: ").append(itemStack.getHoverName().getString()));
         }
     }
 
