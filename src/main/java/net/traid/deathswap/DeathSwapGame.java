@@ -18,25 +18,23 @@ import net.minecraftforge.fml.common.Mod;
 
 import java.util.*;
 
+
 @Mod.EventBusSubscriber
 public class DeathSwapGame {
     private static boolean gameRunning = false;
     private static MinecraftServer serverInstance;
     private static final List<ServerPlayer> eliminatedPlayers = new ArrayList<>();
-    private static final int MIN_SWAP_INTERVAL = 600; // 30 seconds in ticks
-    private static final int MAX_SWAP_INTERVAL = 3600; // 3 minutes in ticks
     private static int swapTimer;
 
     public static void startGame(MinecraftServer server) {
         gameRunning = true;
         serverInstance = server;
-        swapTimer = randomSwapInterval(); // Initialize with a random swap interval
+        swapTimer = randomSwapInterval();
 
-        DeathSwapItemDrops.startItemDrops(server); // Item Drops Start
+        DeathSwapItemDrops.startItemDrops(server);
 
-        // Set all players to Survival mode
         for (ServerPlayer player : serverInstance.getPlayerList().getPlayers()) {
-            player.setGameMode(GameType.SURVIVAL); // Set each player to Survival
+            player.setGameMode(GameType.SURVIVAL);
             player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§aGood Luck")));
             player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("§6Death Swap Has Started!")));
             player.playNotifySound(SoundEvents.NOTE_BLOCK_PLING.get(), SoundSource.PLAYERS, 1.0F, 1.0F);
@@ -47,8 +45,7 @@ public class DeathSwapGame {
         gameRunning = false;
         if (serverInstance != null) {
             for (ServerPlayer player : serverInstance.getPlayerList().getPlayers()) {
-                // Ensure all players are set to Survival mode when the game ends
-                player.setGameMode(GameType.SURVIVAL); // Set each player to Survival mode at the end of the game
+                player.setGameMode(GameType.SURVIVAL);
                 player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§cGame Over")));
                 player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("§6Death Swap Is Over!")));
                 player.playNotifySound(SoundEvents.NOTE_BLOCK_PLING.get(), SoundSource.PLAYERS, 1.0F, 1.0F);
@@ -60,38 +57,21 @@ public class DeathSwapGame {
         return gameRunning;
     }
 
-    private static String generateProgressBar(float progress) {
-        int totalBars = 20;
-        int filledBars = (int) (totalBars * progress);
-        StringBuilder bar = new StringBuilder("§e[");
-        for (int i = 0; i < totalBars; i++) {
-            bar.append(i < filledBars ? "§a|" : "§7|");
-        }
-        bar.append("§e]");
-        return bar.toString();
-    }
-
-    // Randomly select a new swap interval between 30 seconds (600 ticks) and 3 minutes (3600 ticks)
     private static int randomSwapInterval() {
         Random rand = new Random();
-        return rand.nextInt(MAX_SWAP_INTERVAL - MIN_SWAP_INTERVAL + 1) + MIN_SWAP_INTERVAL;
+        return (rand.nextInt(Config.MAX_SWAP_TIME.get() - Config.MIN_SWAP_TIME.get() + 1) + Config.MIN_SWAP_TIME.get()) * 20;
     }
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (!gameRunning) return;
 
-        swapTimer--; // Decrease the swap timer by 1 each tick
-
-        // Update action bar for all players
+        swapTimer--;
         for (ServerPlayer player : serverInstance.getPlayerList().getPlayers()) {
-            float progress = (float) swapTimer / MAX_SWAP_INTERVAL;
-            String progressBar = generateProgressBar(progress);
-            player.connection.send(new ClientboundSetActionBarTextPacket(Component.literal("§6Swap In: " + progressBar)));
+            player.connection.send(new ClientboundSetActionBarTextPacket(Component.literal("§6Swap In: " + (swapTimer / 20) + "s")));
         }
 
-        // Countdown in last 5 seconds
-        if (swapTimer <= 100 && swapTimer % 20 == 0) { // Last 5 seconds (100 ticks)
+        if (swapTimer <= 100 && swapTimer % 20 == 0) {
             int secondsLeft = swapTimer / 20;
             for (ServerPlayer player : serverInstance.getPlayerList().getPlayers()) {
                 player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§e" + secondsLeft)));
@@ -100,17 +80,22 @@ public class DeathSwapGame {
             }
         }
 
-        // Swap players when the timer hits 0
         if (swapTimer <= 0) {
             swapPlayers(serverInstance);
-            swapTimer = randomSwapInterval(); // Set a new random interval for the next swap
+            swapTimer = randomSwapInterval();
+            System.out.println("Random Swap Interval: " + swapTimer);
         }
 
-        // Check if only one player remains
+//        // Log the remaining time to swap in the console
+//        int secondsLeftToSwap = swapTimer / 20;
+//        System.out.println("Time left to swap: " +  (swapTimer / 20) + " seconds");
+        System.out.println("Config.MAX_SWAP_TIME: " + Config.MAX_SWAP_TIME.get());
+        System.out.println("Config.Min_SWAP_TIME: " + Config.MIN_SWAP_TIME.get());
+        System.out.println("Random Swap Interval: " + swapTimer);
+
         List<ServerPlayer> alivePlayers = new ArrayList<>(serverInstance.getPlayerList().getPlayers());
         alivePlayers.removeIf(p -> p.isSpectator() || eliminatedPlayers.contains(p));
-
-        if (alivePlayers.size() <= 1) {
+        if (alivePlayers.size() <= 0) {
             stopGame();
             announceWinner();
         }
@@ -135,12 +120,6 @@ public class DeathSwapGame {
             ServerPlayer player = players.get(i);
             Vec3 newPos = positions.get((i + 1) % players.size());
             ServerLevel level = player.serverLevel();
-
-            // Ensure safe teleport (optional)
-            // if (level.getBlockState(newPos.below()).isAir()) {
-            //     newPos = new Vec3(newPos.x, level.getHeight(), newPos.z); // Move player to highest block
-            // }
-
             player.teleportTo(level, newPos.x, newPos.y, newPos.z, player.getYRot(), player.getXRot());
             player.sendSystemMessage(Component.literal("§cSwapped!"));
         }

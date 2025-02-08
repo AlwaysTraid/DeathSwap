@@ -1,63 +1,62 @@
 package net.traid.deathswap;
 
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
 import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
-import net.minecraftforge.registries.ForgeRegistries;
 
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-// An example config class. This is not required, but it's a good idea to have one to keep your config organized.
-// Demonstrates how to use Forge's config APIs
-@Mod.EventBusSubscriber(modid = DeathSwap.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
-public class Config
-{
+public class Config {
     private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
 
-    private static final ForgeConfigSpec.BooleanValue LOG_DIRT_BLOCK = BUILDER
-            .comment("Whether to log the dirt block on common setup")
-            .define("logDirtBlock", true);
+    public static final ForgeConfigSpec.BooleanValue RANDOM_ITEM_DROPS;
+    public static final ForgeConfigSpec.BooleanValue RANDOM_BLOCK_DROPS;
+    public static final ForgeConfigSpec.BooleanValue RANDOM_MOB_DROPS;
+    public static final ForgeConfigSpec.IntValue MIN_SWAP_TIME;
+    public static final ForgeConfigSpec.IntValue MAX_SWAP_TIME;
 
-    private static final ForgeConfigSpec.IntValue MAGIC_NUMBER = BUILDER
-            .comment("A magic number")
-            .defineInRange("magicNumber", 42, 0, Integer.MAX_VALUE);
+    static {
+        BUILDER.push("DeathSwap Settings");
 
-    public static final ForgeConfigSpec.ConfigValue<String> MAGIC_NUMBER_INTRODUCTION = BUILDER
-            .comment("What you want the introduction message to be for the magic number")
-            .define("magicNumberIntroduction", "The magic number is... ");
+        // Config option for random item drops (default: true)
+        RANDOM_ITEM_DROPS = BUILDER.comment("Enable random items dropping when players swap.")
+                .define("randomItemDrops", true);
 
-    // a list of strings that are treated as resource locations for items
-    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_STRINGS = BUILDER
-            .comment("A list of items to log on common setup.")
-            .defineListAllowEmpty("items", List.of("minecraft:iron_ingot"), Config::validateItemName);
+        // Config option for random drops from blocks when broken (default: false)
+        RANDOM_BLOCK_DROPS = BUILDER.comment("Enable random drops from blocks when broken.")
+                .define("randomBlockDrops", false);
 
-    static final ForgeConfigSpec SPEC = BUILDER.build();
+        // Config option for random drops from mobs when killed (default: false)
+        RANDOM_MOB_DROPS = BUILDER.comment("Enable random drops from mobs when killed.")
+                .define("randomMobDrops", false);
 
-    public static boolean logDirtBlock;
-    public static int magicNumber;
-    public static String magicNumberIntroduction;
-    public static Set<Item> items;
+        // Config option for the minimum swap time range (default: 60 seconds)
+        MIN_SWAP_TIME = BUILDER.comment("Minimum swap time in seconds (default: 60).")
+                .defineInRange("minSwapTime", 60, 10, 600);
 
-    private static boolean validateItemName(final Object obj)
-    {
-        return obj instanceof final String itemName && ForgeRegistries.ITEMS.containsKey(ResourceLocation.tryParse(itemName));
+        // Config option for the maximum swap time range (default: 300 seconds)
+        MAX_SWAP_TIME = BUILDER.comment("Maximum swap time in seconds (default: 300).")
+                .defineInRange("maxSwapTime", 300, 10, 600);
+
+        BUILDER.pop();
     }
 
-    @SubscribeEvent
-    static void onLoad(final ModConfigEvent event)
-    {
-        logDirtBlock = LOG_DIRT_BLOCK.get();
-        magicNumber = MAGIC_NUMBER.get();
-        magicNumberIntroduction = MAGIC_NUMBER_INTRODUCTION.get();
+    public static final ForgeConfigSpec SPEC = BUILDER.build();
 
-        // convert the list of strings into a set of items
-        items = ITEM_STRINGS.get().stream()
-                .map(itemName -> ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(itemName)))
-                .collect(Collectors.toSet());
+    // Method to update the random item drops setting
+    public static void setRandomItemDrops(boolean enabled) {
+        RANDOM_ITEM_DROPS.set(enabled);
+    }
+
+    // Method to update the random block drops setting
+    public static void setRandomBlockDrops(boolean enabled) {
+        RANDOM_BLOCK_DROPS.set(enabled);
+    }
+
+    // Method to update the random mob drops setting
+    public static void setRandomMobDrops(boolean enabled) {
+        RANDOM_MOB_DROPS.set(enabled);
+    }
+
+    // Method to update the swap time range
+    public static void setSwapTime(int minTime, int maxTime) {
+        MIN_SWAP_TIME.set(minTime);
+        MAX_SWAP_TIME.set(maxTime);
     }
 }
