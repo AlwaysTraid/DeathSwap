@@ -62,42 +62,53 @@ public class DeathSwapGame {
         return (rand.nextInt(Config.MAX_SWAP_TIME.get() - Config.MIN_SWAP_TIME.get() + 1) + Config.MIN_SWAP_TIME.get()) * 20;
     }
 
+    private static long lastUpdateTime = 0; // Track last time update occurred
+    private static final int SWAP_INTERVAL_MS = 1000; // 1000 ms = 1 second
+
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (!gameRunning) return;
 
-        swapTimer--;
-        for (ServerPlayer player : serverInstance.getPlayerList().getPlayers()) {
-            player.connection.send(new ClientboundSetActionBarTextPacket(Component.literal("§6Swap In: " + (swapTimer / 20) + "s")));
-        }
+        // Get the current time in milliseconds
+        long currentTime = System.currentTimeMillis();
 
-        if (swapTimer <= 100 && swapTimer % 20 == 0) {
+        // If 1 second has passed (every 1000 ms)
+        if (currentTime - lastUpdateTime >= SWAP_INTERVAL_MS) {
+            lastUpdateTime = currentTime; // Update last update time
+
+            // Decrease swapTimer by 1 every second
+            swapTimer-=20;
+
+            // Calculate seconds left based on swapTimer (divide by 20)
             int secondsLeft = swapTimer / 20;
-            for (ServerPlayer player : serverInstance.getPlayerList().getPlayers()) {
-                player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§e" + secondsLeft)));
-                player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("§6Get ready to swap!")));
-                player.playNotifySound(SoundEvents.NOTE_BLOCK_PLING.get(), SoundSource.PLAYERS, 1.0F, 1.0F);
+
+            // Update the countdown if the second has changed
+            if (swapTimer <= 100) {
+                for (ServerPlayer player : serverInstance.getPlayerList().getPlayers()) {
+                    player.connection.send(new ClientboundSetTitleTextPacket(Component.literal("§e" + secondsLeft)));
+                    player.connection.send(new ClientboundSetSubtitleTextPacket(Component.literal("§6Get ready to swap!")));
+                    player.playNotifySound(SoundEvents.NOTE_BLOCK_PLING.get(), SoundSource.PLAYERS, 1.0F, 1.0F);
+                }
             }
-        }
 
-        if (swapTimer <= 0) {
-            swapPlayers(serverInstance);
-            swapTimer = randomSwapInterval();
+            // When swapTimer reaches 0, trigger the swap
+            if (swapTimer <= 0) {
+                swapPlayers(serverInstance);
+                swapTimer = randomSwapInterval(); // Reset to a new random interval
+                System.out.println("Random Swap Interval: " + swapTimer);
+            }
+
+            // Debugging info
+            System.out.println("Config.MAX_SWAP_TIME: " + Config.MAX_SWAP_TIME.get());
+            System.out.println("Config.Min_SWAP_TIME: " + Config.MIN_SWAP_TIME.get());
             System.out.println("Random Swap Interval: " + swapTimer);
-        }
 
-//        // Log the remaining time to swap in the console
-//        int secondsLeftToSwap = swapTimer / 20;
-//        System.out.println("Time left to swap: " +  (swapTimer / 20) + " seconds");
-        System.out.println("Config.MAX_SWAP_TIME: " + Config.MAX_SWAP_TIME.get());
-        System.out.println("Config.Min_SWAP_TIME: " + Config.MIN_SWAP_TIME.get());
-        System.out.println("Random Swap Interval: " + swapTimer);
-
-        List<ServerPlayer> alivePlayers = new ArrayList<>(serverInstance.getPlayerList().getPlayers());
-        alivePlayers.removeIf(p -> p.isSpectator() || eliminatedPlayers.contains(p));
-        if (alivePlayers.size() <= 0) {
-            stopGame();
-            announceWinner();
+            List<ServerPlayer> alivePlayers = new ArrayList<>(serverInstance.getPlayerList().getPlayers());
+            alivePlayers.removeIf(p -> p.isSpectator() || eliminatedPlayers.contains(p));
+            if (alivePlayers.size() <= 0) {
+                stopGame();
+                announceWinner();
+            }
         }
     }
 
