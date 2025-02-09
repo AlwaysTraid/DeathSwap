@@ -10,6 +10,8 @@ public class Config {
     public static final ForgeConfigSpec.BooleanValue RANDOM_MOB_DROPS;
     public static final ForgeConfigSpec.IntValue MIN_SWAP_TIME;
     public static final ForgeConfigSpec.IntValue MAX_SWAP_TIME;
+    public static final ForgeConfigSpec.IntValue MIN_ITEMDROP_TIME;
+    public static final ForgeConfigSpec.IntValue MAX_ITEMDROP_TIME;
 
     static {
         BUILDER.push("DeathSwap Settings");
@@ -33,6 +35,14 @@ public class Config {
         // Config option for the maximum swap time range (default: 300 seconds)
         MAX_SWAP_TIME = BUILDER.comment("Maximum swap time in seconds (default: 300).")
                 .defineInRange("maxSwapTime", 300, 10, 600);
+
+        // Config option for the minimum item drop time range (default: 30 seconds)
+        MIN_ITEMDROP_TIME = BUILDER.comment("Minimum item drop time in seconds (default: 60).")
+                .defineInRange("minItemDropTime", 30, 5, 600);
+
+        // Config option for the maximum item drop time range (default: 300 seconds)
+        MAX_ITEMDROP_TIME = BUILDER.comment("Maximum item drop time in seconds (default: 30).")
+                .defineInRange("maxItemDropTime", 30, 5, 600);
 
         BUILDER.pop();
     }
@@ -58,5 +68,10 @@ public class Config {
     public static void setSwapTime(int minTime, int maxTime) {
         MIN_SWAP_TIME.set(minTime);
         MAX_SWAP_TIME.set(maxTime);
+    }
+
+    public static void setItemDropTime(int minTime, int maxTime) {
+        MIN_ITEMDROP_TIME.set(minTime);
+        MAX_ITEMDROP_TIME.set(maxTime);
     }
 }

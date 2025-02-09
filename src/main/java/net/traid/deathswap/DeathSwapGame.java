@@ -95,17 +95,11 @@ public class DeathSwapGame {
             if (swapTimer <= 0) {
                 swapPlayers(serverInstance);
                 swapTimer = randomSwapInterval(); // Reset to a new random interval
-                System.out.println("Random Swap Interval: " + swapTimer);
             }
-
-            // Debugging info
-            System.out.println("Config.MAX_SWAP_TIME: " + Config.MAX_SWAP_TIME.get());
-            System.out.println("Config.Min_SWAP_TIME: " + Config.MIN_SWAP_TIME.get());
-            System.out.println("Random Swap Interval: " + swapTimer);
 
             List<ServerPlayer> alivePlayers = new ArrayList<>(serverInstance.getPlayerList().getPlayers());
             alivePlayers.removeIf(p -> p.isSpectator() || eliminatedPlayers.contains(p));
-            if (alivePlayers.size() <= 0) {
+            if (alivePlayers.size() <= 1) {
                 stopGame();
                 announceWinner();
             }
@@ -134,8 +128,6 @@ public class DeathSwapGame {
             player.teleportTo(level, newPos.x, newPos.y, newPos.z, player.getYRot(), player.getXRot());
             player.sendSystemMessage(Component.literal("§cSwapped!"));
         }
-
-        server.getPlayerList().broadcastSystemMessage(Component.literal("§eDeath Swap has happened!"), false);
     }
 
     public static void eliminatePlayer(ServerPlayer player) {

@@ -26,8 +26,10 @@ import java.util.Random;
 @Mod.EventBusSubscriber
 public class DeathSwapItemDrops {
     private static final Random random = new Random();
-    private static int itemDropTimer = 600; // 30s in ticks
-    private static final int ITEM_DROP_INTERVAL = 600; // 30s
+    private static int itemDropTimer;  // Timer in milliseconds
+    private static int itemStartTimer;
+    private static long lastUpdateTime = 0; // Track last time update occurred
+    private static final int ITEM_DROP_INTERVAL_MS = 1000; // 30 seconds in milliseconds
     private static MinecraftServer serverInstance;
     private static boolean randomItemDrops = true;
     private static boolean randomBlockDrops = false;
@@ -37,30 +39,57 @@ public class DeathSwapItemDrops {
         if (serverInstance == null) {
             serverInstance = server;
         }
-        itemDropTimer = ITEM_DROP_INTERVAL;
-
-        randomItemDrops = Config.RANDOM_ITEM_DROPS.get();
+        itemDropTimer = randomItemDropInterval();  // Timer in milliseconds
+        itemStartTimer = itemDropTimer;
+        lastUpdateTime = 0; // Track last time update occurred
         randomBlockDrops = Config.RANDOM_BLOCK_DROPS.get();
         randomMobDrops = Config.RANDOM_MOB_DROPS.get();
     }
+
+    private static int randomItemDropInterval() {
+        int minItemDropTime = Config.MIN_ITEMDROP_TIME.get(); // in seconds
+        int maxItemDropTime = Config.MAX_ITEMDROP_TIME.get(); // in seconds
+
+        Random rand = new Random();
+        // Return a random value between min and max item drop time in ticks
+        return (rand.nextInt(maxItemDropTime - minItemDropTime + 1) + minItemDropTime) * 20; // 20 ticks per second
+    }
+
+    private static final int ITEM_INTERVAL_MS = 1000; // 1000 ms = 1 second
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (serverInstance == null || !DeathSwapGame.isGameRunning() || !randomItemDrops) return;
 
-        itemDropTimer--;
+        // Get the current time in milliseconds
+        long currentTime = System.currentTimeMillis();
 
-        for (ServerPlayer player : serverInstance.getPlayerList().getPlayers()) {
-            if (player.gameMode.getGameModeForPlayer() != GameType.SPECTATOR) {
-                float progress = (float) itemDropTimer / ITEM_DROP_INTERVAL;
-                player.connection.send(new ClientboundSetActionBarTextPacket(Component.literal("§6Item Drop: " + generateProgressBar(progress))));
+        // If 1 second has passed (every 1000 ms)
+        if (currentTime - lastUpdateTime >= ITEM_INTERVAL_MS) {
+            lastUpdateTime = currentTime; // Update last update time
+
+            // Decrease swapTimer by 1 every second
+            itemDropTimer -= 20;
+
+            // Every 20 ticks = 1 second
+            if (itemDropTimer <= 0) {
+                // Give items to players
+                giveRandomItems();
+                itemDropTimer = randomItemDropInterval(); // Reset the timer to a random value in ticks
+                itemStartTimer = itemDropTimer;
+            }
+
+
+            // Optionally: Update the progress bar with the current item drop progress
+            float progress = (float) itemDropTimer / itemStartTimer;
+            for (ServerPlayer player : serverInstance.getPlayerList().getPlayers()) {
+                if (player.gameMode.getGameModeForPlayer() != GameType.SPECTATOR) {
+                    if (progress > 0)
+                        player.connection.send(new ClientboundSetActionBarTextPacket(Component.literal("§6Item Drop: " + generateProgressBar(progress))));
+                }
             }
         }
 
-        if (itemDropTimer <= 0 && randomItemDrops) {
-            giveRandomItems();
-            itemDropTimer = ITEM_DROP_INTERVAL;
-        }
     }
 
     private static void giveRandomItems() {
@@ -83,13 +112,19 @@ public class DeathSwapItemDrops {
         if (!randomBlockDrops || event.getPlayer().level().isClientSide) return;
 
         event.setCanceled(true); // Prevent normal drop
-        BlockState state = event.getState();
-        Block block = state.getBlock();
+
         ServerPlayer player = (ServerPlayer) event.getPlayer();
 
+        // Destroy the block at the given position (simulate block breaking)
+        player.level().destroyBlock(event.getPos(), false);
+
+        // Create a random item drop
         ItemStack randomDrop = new ItemStack(getRandomItem(), 1);
+
+        // Drop the item at the same position where the block was destroyed
         player.level().addFreshEntity(new ItemEntity(player.level(), event.getPos().getX(), event.getPos().getY(), event.getPos().getZ(), randomDrop));
     }
+
 
     @SubscribeEvent
     public static void onMobDeath(LivingDeathEvent event) {
